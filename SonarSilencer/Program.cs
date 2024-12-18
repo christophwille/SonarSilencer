@@ -1,40 +1,85 @@
-﻿using SonarSilencer;
+﻿using McMaster.Extensions.CommandLineUtils;
+using Microsoft.Extensions.Hosting;
+using SonarSilencer;
+using System.ComponentModel.DataAnnotations;
 
-var analyzerAssemblyResult = SonarAnalyzerAssemblyLoader.Load();
 
-if (analyzerAssemblyResult.Status != ResultStatus.Success)
+[HelpOption("-h|--help")]
+class SonarSilencerCmdProgram
 {
-    Console.WriteLine("Failed to load SonarAnalyzer.CSharp assembly.");
-    Console.WriteLine(analyzerAssemblyResult.Message);
-    return;
-}
+    public static Task<int> Main(string[] args) => new HostBuilder().RunCommandLineApplicationAsync<SonarSilencerCmdProgram>(args);
 
-var categorizedDiagnosticsResult = EnumerateAnalyzersInAssembly.Enumerate(analyzerAssemblyResult.Result!);
+    [Required]
+    [Argument(0, "Categories", "The list of categories that should be enabled. This argument is mandatory.")]
+    public string[] CategoriesToKeepEnabled { get; }
 
-if (categorizedDiagnosticsResult.Status != ResultStatus.Success)
-{
-    Console.WriteLine("Failed to enumerate analyzers from assembly");
-    Console.WriteLine(categorizedDiagnosticsResult.Message);
-    return;
-}
-
-var categorizedDiagnostics = categorizedDiagnosticsResult.Result;
-Console.WriteLine("--------------");
-
-foreach (var value in categorizedDiagnostics!.Keys)
-{
-    var knownDiagnostics = categorizedDiagnostics[value];
-
-    Console.WriteLine("Category: " + value);
-
-    foreach (var diagnostic in knownDiagnostics)
+    private readonly IHostEnvironment _env;
+    public SonarSilencerCmdProgram(IHostEnvironment env)
     {
-        Console.WriteLine($"     {diagnostic.Id}: {diagnostic.Title} - {diagnostic.DefaultSeverity}");
+        _env = env;
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Roslynator", "RCS1213:Remove unused member declaration", Justification = "<Pending>")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:Remove unused private members", Justification = "<Pending>")]
+    private Task<int> OnExecuteAsync(CommandLineApplication app)
+    {
+        var analyzerAssemblyResult = SonarAnalyzerAssemblyLoader.Load();
+
+        if (analyzerAssemblyResult.Status != ResultStatus.Success)
+        {
+            Console.WriteLine("Failed to load SonarAnalyzer.CSharp assembly.");
+            Console.WriteLine(analyzerAssemblyResult.Message);
+            return Task.FromResult(1);
+        }
+
+        var categorizedDiagnosticsResult = EnumerateAnalyzersInAssembly.Enumerate(analyzerAssemblyResult.Result!);
+
+        if (categorizedDiagnosticsResult.Status != ResultStatus.Success)
+        {
+            Console.WriteLine("Failed to enumerate analyzers from assembly");
+            Console.WriteLine(categorizedDiagnosticsResult.Message);
+            return Task.FromResult(2);
+        }
+
+        var categorizedDiagnostics = categorizedDiagnosticsResult.Result;
+        Console.WriteLine("-------------- REFERENCE --------------");
+
+        foreach (var value in categorizedDiagnostics!.Keys)
+        {
+            var knownDiagnostics = categorizedDiagnostics[value];
+
+            Console.WriteLine("Category: " + value);
+
+            foreach (var diagnostic in knownDiagnostics)
+            {
+                Console.WriteLine($"     {diagnostic.Id}: {diagnostic.Title} - {diagnostic.DefaultSeverity}");
+            }
+        }
+
+
+        Console.WriteLine("-------------- .editorconfig --------------");
+
+        // #### <Category> ####
+        // # <Title> - <DefaultSeverity>
+        // dotnet_diagnostic.<Id>.severity = none
+
+        foreach (var value in categorizedDiagnostics!.Keys)
+        {
+            var knownDiagnostics = categorizedDiagnostics[value];
+
+            if (CategoriesToKeepEnabled.Contains(value, StringComparer.InvariantCultureIgnoreCase))
+            {
+                continue;
+            }
+
+            Console.WriteLine($"\r\n#### {value} ####");
+            foreach (var diagnostic in knownDiagnostics)
+            {
+                Console.WriteLine($"# {diagnostic.Title} - {diagnostic.DefaultSeverity}");
+                Console.WriteLine($"dotnet_diagnostic.{diagnostic.Id}.severity = none");
+            }
+        }
+
+        return Task.FromResult(0);
     }
 }
-
-// #### <Category> ####
-// # <Title> - <DefaultSeverity>
-// dotnet_diagnostic.<Id>.severity = none
-
-// TODO: Take command line argument for positive list of categories to keep (and disable all else)
