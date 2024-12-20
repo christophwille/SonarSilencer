@@ -3,6 +3,17 @@ using Microsoft.Extensions.Hosting;
 using SonarSilencer;
 using System.ComponentModel.DataAnnotations;
 
+public enum CategoriesListType
+{
+    Positive,
+    Negative
+}
+
+public static class CategoriesListTypeExtensions
+{
+    public static bool IsPositive(this CategoriesListType type) => type == CategoriesListType.Positive;
+    public static bool IsNegative(this CategoriesListType type) => type == CategoriesListType.Negative;
+}
 
 [HelpOption("-h|--help")]
 class SonarSilencerCmdProgram
@@ -10,8 +21,12 @@ class SonarSilencerCmdProgram
     public static Task<int> Main(string[] args) => new HostBuilder().RunCommandLineApplicationAsync<SonarSilencerCmdProgram>(args);
 
     [Required]
-    [Argument(0, "Categories", "The list of categories that should be enabled. This argument is mandatory.")]
-    public string[] CategoriesToKeepEnabled { get; }
+    [Argument(0, "Categories", "The list of categories. This argument is mandatory.")]
+    public string[] Categories { get; }
+
+
+    [Option("-l|--listtype <type>", "Are Categories positive or negative list?", CommandOptionType.SingleValue)]
+    public CategoriesListType CategoriesListType { get; } = CategoriesListType.Positive;
 
     private readonly IHostEnvironment _env;
     public SonarSilencerCmdProgram(IHostEnvironment env)
@@ -67,7 +82,12 @@ class SonarSilencerCmdProgram
         {
             var knownDiagnostics = categorizedDiagnostics[value];
 
-            if (CategoriesToKeepEnabled.Contains(value, StringComparer.InvariantCultureIgnoreCase))
+            if (CategoriesListType.IsPositive() && Categories.Contains(value, StringComparer.InvariantCultureIgnoreCase))
+            {
+                continue;
+            }
+
+            if (CategoriesListType.IsNegative() && !Categories.Contains(value, StringComparer.InvariantCultureIgnoreCase))
             {
                 continue;
             }
