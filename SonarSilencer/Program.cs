@@ -63,7 +63,7 @@ class SonarSilencerCmdProgram
         {
             var knownDiagnostics = categorizedDiagnostics[value];
 
-            Console.WriteLine("Category: " + value);
+            Console.WriteLine($"Category: {value} ({knownDiagnostics.Count})");
 
             foreach (var diagnostic in knownDiagnostics)
             {
@@ -92,7 +92,7 @@ class SonarSilencerCmdProgram
                 continue;
             }
 
-            Console.WriteLine($"\r\n#### {value} ####");
+            Console.WriteLine($"\r\n#### {value} ({knownDiagnostics.Count}) ####");
             foreach (var diagnostic in knownDiagnostics)
             {
                 Console.WriteLine($"# {diagnostic.Title} - {diagnostic.DefaultSeverity}");

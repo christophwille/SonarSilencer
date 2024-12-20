@@ -1,7 +1,20 @@
 # SonarSilencer
 Tool to disable all SonarAnalyzer.CSharp analyzers and keep only the ones you want to actually use via .editorconfig
+`
+```
+Usage: SonarSilencer [options] <Categories>
 
-Usage: `sonarsilencer "Critical Security Hotspot" "Major Bug"`
+Arguments:
+  Categories            The list of categories. This argument is mandatory.
+
+Options:
+  -h|--help             Show help information.
+  -l|--listtype <type>  Are Categories positive or negative list?
+                        Allowed values are: Positive, Negative.
+                        Default value is: Positive.
+```
+
+Example: `./sonarsilencer.exe "Critical Security Hotspot" "Major Bug"`
 
 You provide the positive list (the categories you want to keep)
 
